@@ -33,10 +33,12 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Set up CORS with 24h preflight caching for 200+ concurrent students
 if settings.CORS_ORIGINS:
+    origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else [settings.CORS_ORIGINS]
+    is_wildcard = "*" in origins or origins == ["*"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
+        allow_origins=origins,
+        allow_credentials=not is_wildcard,
         allow_methods=["*"],
         allow_headers=["*"],
         max_age=86400,
