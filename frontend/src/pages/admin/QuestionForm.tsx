@@ -1,11 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
+import { db } from "../../firebase";
+import { collection, onSnapshot, doc, updateDoc, arrayUnion } from "firebase/firestore";
 import type { Difficulty, Language, QuestionType } from "../../types";
 import { LanguageMultiSelect } from "../../components/LanguageMultiSelect";
 import { LanguageCodeTabs } from "../../components/LanguageCodeTabs";
 import { QuestionTimeLimitInput } from "../../components/QuestionTimeLimitInput";
 import { ArrowLeft, Save, Plus, Trash2, EyeOff, Eye } from "lucide-react";
+
+interface AssessmentOption {
+  id: string;
+  name: string;
+}
 
 export const QuestionForm: React.FC = () => {
   const { id } = useParams<{ id?: string }>();
@@ -13,6 +20,29 @@ export const QuestionForm: React.FC = () => {
   const { questions, addQuestion, updateQuestion } = useApp();
 
   const existing = id ? questions.find((q) => q.id === id) : null;
+
+  const [availableAssessments, setAvailableAssessments] = useState<AssessmentOption[]>([]);
+  const [targetAssessmentId, setTargetAssessmentId] = useState<string>("");
+
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(collection(db, "assessments"), (snap) => {
+      const list: AssessmentOption[] = [];
+      snap.forEach((d) => list.push({ id: d.id, name: (d.data().name || "Untitled Assessment") }));
+      setAvailableAssessments(list);
+
+      // Pre-select assessment if question is already assigned
+      if (existing?.id) {
+        snap.forEach((d) => {
+          const qIds = d.data().questionIds as string[] | undefined;
+          if (qIds && qIds.includes(existing.id)) {
+            setTargetAssessmentId(d.id);
+          }
+        });
+      }
+    });
+    return unsub;
+  }, [existing?.id]);
 
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
@@ -99,11 +129,20 @@ export const QuestionForm: React.FC = () => {
     };
 
     try {
+      let savedId = existing ? existing.id : "";
       if (existing) {
         await updateQuestion(existing.id, payload);
       } else {
-        await addQuestion(payload);
+        savedId = await addQuestion(payload);
       }
+
+      // Link question to target assessment test in Firestore
+      if (db && targetAssessmentId && savedId) {
+        await updateDoc(doc(db, "assessments", targetAssessmentId), {
+          questionIds: arrayUnion(savedId),
+        }).catch((err) => console.warn("Failed to link question to assessment:", err));
+      }
+
       navigate("/admin/questions");
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to save question to Firestore. Check connection.");
@@ -126,16 +165,32 @@ export const QuestionForm: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Question Title</label>
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Factorial Calculation / Output Prediction"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Question Title *</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Factorial Calculation / Output Prediction"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:border-blue-600 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Assign to Assessment Test</label>
+            <select
+              value={targetAssessmentId}
+              onChange={(e) => setTargetAssessmentId(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-blue-300 bg-blue-50/50 text-xs font-bold text-slate-900 focus:border-blue-600 focus:outline-none"
+            >
+              <option value="">-- Select Assessment (Optional) --</option>
+              {availableAssessments.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

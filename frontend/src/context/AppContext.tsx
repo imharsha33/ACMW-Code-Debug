@@ -18,7 +18,7 @@ interface AppContextType {
   logout: () => void;
 
   questions: Question[];
-  addQuestion: (q: Omit<Question, "id" | "createdAt" | "updatedAt" | "studentStatus">) => Promise<void>;
+  addQuestion: (q: Omit<Question, "id" | "createdAt" | "updatedAt" | "studentStatus">) => Promise<string>;
   updateQuestion: (id: string, q: Partial<Question>) => Promise<void>;
   deleteQuestion: (id: string) => Promise<void>;
   syncAllQuestionsToFirestore: () => Promise<void>;
@@ -688,7 +688,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem("herizon_session");
   }
 
-  const addQuestion = async (q: Omit<Question, "id" | "createdAt" | "updatedAt" | "studentStatus">) => {
+  const addQuestion = async (q: Omit<Question, "id" | "createdAt" | "updatedAt" | "studentStatus">): Promise<string> => {
     // Use crypto.randomUUID() to prevent ID collisions on rapid clicks or multi-admin edits
     const newId = "q_" + crypto.randomUUID();
     const newQ: Question = {
@@ -700,11 +700,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     // Use functional updater — avoids stale-closure bug from reading `questions` directly
     setQuestions((prev) => [newQ, ...prev]);
-    // localStorage sync handled reactively by the Firestore onSnapshot useEffect (no inline setItem)
 
     if (db) {
       await setDoc(doc(db, "questions", newId), newQ);
     }
+    return newId;
   };
 
   const updateQuestion = async (id: string, q: Partial<Question>) => {
