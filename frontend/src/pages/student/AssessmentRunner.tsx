@@ -5,7 +5,7 @@ import type { Language } from "../../types";
 import { KareAcmwBadge } from "../../components/KareAcmwBadge";
 import { apiRunCode } from "../../services/api";
 
-import { Clock, Play, Send, ShieldAlert, CheckCircle, Maximize2 } from "lucide-react";
+import { Clock, Play, Send, ShieldAlert, CheckCircle, Maximize2, RotateCcw } from "lucide-react";
 import { CodeEditorField } from "../../components/CodeEditorField";
 
 export const AssessmentRunner: React.FC = () => {
@@ -158,6 +158,19 @@ export const AssessmentRunner: React.FC = () => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  };
+
+  const handleResetCode = () => {
+    if (!currentQuestion) return;
+    const starter = currentQuestion.starterCode?.[selectedLang] ?? "";
+    setCode(starter);
+    setErrorLine(null);
+    const rt = getRuntime(currentQuestion.id);
+    updateRuntime(currentQuestion.id, {
+      code: { ...rt.code, [selectedLang]: starter },
+      lastOutput: null,
+    });
+    setConsoleOutput(`↺ Code reset to initial ${selectedLang} template.`);
   };
 
   const handleCodeChange = (val: string) => {
@@ -638,9 +651,14 @@ ${logs.join("\n")}
 
             <div className="flex items-center gap-2">
               {currentQuestion.questionType !== "Output Prediction" && (
-                <button onClick={handleRunCode} className="btn-secondary text-xs py-1 px-3">
-                  <Play size={13} /> Run Code
-                </button>
+                <>
+                  <button onClick={handleResetCode} className="btn-secondary text-xs py-1 px-3 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 font-medium">
+                    <RotateCcw size={13} /> Reset Code
+                  </button>
+                  <button onClick={handleRunCode} className="btn-secondary text-xs py-1 px-3">
+                    <Play size={13} /> Run Code
+                  </button>
+                </>
               )}
               <button onClick={handleSubmitQuestion} className="btn-primary text-xs py-1 px-3">
                 <Send size={13} /> Submit
