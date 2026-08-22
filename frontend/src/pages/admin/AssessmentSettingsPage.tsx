@@ -184,53 +184,6 @@ export const AssessmentSettingsPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Live preview of current Firestore-saved dates */}
-          {(assessmentSettings.startDate || assessmentSettings.endDate) && (
-            <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 font-medium">
-              <span className="font-bold text-slate-700">Currently saved in database: </span>
-              {assessmentSettings.startDate && assessmentSettings.startTime
-                ? `Starts ${new Date(`${assessmentSettings.startDate}T${assessmentSettings.startTime}`).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
-                : "No start restriction"}
-              {" → "}
-              {assessmentSettings.endDate && assessmentSettings.endTime
-                ? `Ends ${new Date(`${assessmentSettings.endDate}T${assessmentSettings.endTime}`).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
-                : "No end restriction"}
-            </div>
-          )}
-        </div>
-
-        {/* Backend Execution Server URL Configuration for Multi-Device / Lab Deployments */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 sm:p-8 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-sm font-black text-slate-900 tracking-tight">Code Execution Backend Server Configuration</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Specify the IP address or host domain of the backend server (e.g. <code>http://192.168.1.100:8000</code> or <code>http://localhost:8000</code>) for multi-device computer lab exams.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Backend Server API URL
-            </label>
-            <input
-              type="text"
-              defaultValue={localStorage.getItem("acmw_backend_url") || ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val.trim()) {
-                  localStorage.setItem("acmw_backend_url", val.trim());
-                } else {
-                  localStorage.removeItem("acmw_backend_url");
-                }
-              }}
-              placeholder="e.g. http://192.168.1.50:8000 (leave blank to use auto-detected LAN IP or localhost)"
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-xs font-mono text-slate-900 focus:border-orange-500 focus:outline-none"
-            />
-            <p className="text-[11px] text-slate-400 font-medium mt-1">
-              Active backend endpoint: <code className="font-bold text-slate-700">{localStorage.getItem("acmw_backend_url") || "Auto-detected from LAN IP / localhost:8000"}</code>
-            </p>
-          </div>
         </div>
 
         <div className="border-t border-slate-100 pt-6">
