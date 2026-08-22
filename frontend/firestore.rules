@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'acmw@kare.klu.in' ||
+        request.auth.token.admin == true
+      );
+    }
+
+    function isStudent(studentEmail) {
+      return request.auth != null && (
+        request.auth.token.email.lower() == studentEmail.lower() ||
+        request.auth.uid == studentEmail
+      );
+    }
+
+    // Students metadata collection
+    match /students/{studentEmail} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || isStudent(studentEmail);
+    }
+
+    // Global & Per-Assessment Settings
+    match /assessmentSettings/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Assessments collection
+    match /assessments/{assessmentId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Central Question Bank
+    match /questions/{questionId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Student Attempts (Per-student isolation)
+    match /attempts/{attemptId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.studentEmail.lower() == request.auth.token.email.lower());
+      allow create: if request.auth != null && request.resource.data.studentEmail.lower() == request.auth.token.email.lower();
+      allow update: if isAdmin() || (
+        request.auth != null && 
+        resource.data.studentEmail.lower() == request.auth.token.email.lower() &&
+        // Student cannot forge or alter earned marks or score
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['totalScore', 'maxPossibleScore'])
+      );
+      allow delete: if isAdmin();
+
+      // Per-question progress within attempt
+      match /questionAttempts/{qId} {
+        allow read: if isAdmin() || (request.auth != null && get(/databases/$(database)/documents/attempts/$(attemptId)).data.studentEmail.lower() == request.auth.token.email.lower());
+        allow write: if isAdmin() || (request.auth != null && get(/databases/$(database)/documents/attempts/$(attemptId)).data.studentEmail.lower() == request.auth.token.email.lower());
+      }
+    }
+
+    // Final Results Collection
+    match /results/{resultId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.studentEmail.lower() == request.auth.token.email.lower());
+      allow write: if isAdmin();
+    }
+  }
+}

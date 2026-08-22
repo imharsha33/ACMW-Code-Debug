@@ -1,0 +1,21 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies & Build Outputs
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+*.local
+
+# Python & Backend
+backend/venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+

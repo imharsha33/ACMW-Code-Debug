@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HERIZON 2026 — KARE ACM-W Student Chapter · Women Who Build</title>
+<meta name="description" content="HERIZON 2026 — KARE ACM-W Women's Hackathon & Coding Platform."/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          orange: {
+            50: '#fff7ed',
+            100: '#ffedd5',
+            500: '#f97316',
+            600: '#ea580c',
+            700: '#c2410c',
+          }
+        }
+      }
+    }
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; }
+  body.locked { overflow: hidden; height: 100vh; }
+  html { scroll-behavior: smooth; }
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dot-grid {
+    background-color: #f8fafc;
+    background-image: radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px);
+    background-size: 28px 28px;
+  }
+
+  .big-letter {
+    font-size: clamp(4.5rem, 13vw, 9.5rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    display: inline-block;
+    transform-origin: center center;
+  }
+
+  .btn-orange {
+    background-color: #f97316;
+    color: #ffffff;
+    font-weight: 700;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1.75rem;
+    font-size: 0.95rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: background-color 0.15s ease;
+  }
+  .btn-orange:hover {
+    background-color: #ea580c;
+  }
+
+  .clean-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+</style>
+</head>
+<body class="locked">
+
+<!-- ═══════════════════════════════════════════
+     STAGE 1 — INTRO ANIMATION OVERLAY (Matching User Image Layout)
+═══════════════════════════════════════════ -->
+<div id="intro-stage" class="stage dot-grid" style="z-index:52;flex-direction:column">
+  
+  <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
+    <!-- Top Badge Image -->
+    <div id="intro-badge" style="opacity:0;transform:translateY(-20px);margin-bottom:0.75rem">
+      <img src="assets/kare-acmw-badge.png" alt="KARE ACM-W Badge" style="height:80px;width:auto;object-fit:contain"/>
+    </div>
+
+    <!-- ACM-W STUDENT CHAPTER PRESENTS -->
+    <div id="intro-presents" style="font-size:12px;letter-spacing:.25em;text-transform:uppercase;color:#ea580c;font-weight:800;opacity:0;transform:translateY(-10px);margin-bottom:2rem">
+      ACM-W STUDENT CHAPTER PRESENTS
+    </div>
+
+    <!-- Massive Staggered Big Letters: HERI - ZON -->
+    <div id="herizon-row" style="display:flex;align-items:center;justify-content:center;margin-bottom:1rem">
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#db2777">H</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#db2777">E</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#db2777">R</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#db2777">I</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#d1d5db;font-weight:200;margin:0 0.12em">-</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#2563eb">Z</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#2563eb">O</span>
+      <span class="big-letter hz-letter" style="opacity:0;transform:translateY(-40px);color:#2563eb">N</span>
+    </div>
+
+    <!-- Subline: Women Who Build -->
+    <div id="intro-sub" style="font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#94a3b8;font-weight:700;opacity:0">
+      Women Who Build · 2026
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════ -->
+<nav id="nav" style="position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:0.75rem 2rem;background:#ffffff;border-bottom:1px solid #e2e8f0;box-shadow:0 1px 2px rgba(0,0,0,0.04);opacity:0;transform:translateY(-16px);pointer-events:none">
+  <div style="display:flex;align-items:center;gap:0.75rem;cursor:pointer" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    <img src="assets/kare-acmw-badge.png" alt="KARE ACM-W Badge" style="height:38px;width:auto;object-fit:contain"/>
+    <div style="border-left:1px solid #e2e8f0;padding-left:0.75rem">
+      <span style="font-size:0.9rem;font-weight:800;color:#0f172a;letter-spacing:-0.01em">ACM-W PLATFORM</span>
+      <span style="display:block;font-size:0.7rem;font-weight:700;color:#ea580c;letter-spacing:.1em;text-transform:uppercase">HERIZON 2026</span>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.75rem">
+    <a href="register.html" class="btn-orange" style="padding:0.5rem 1.25rem;font-size:0.875rem">Register Now →</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     HERO SECTION
+═══════════════════════════════════════════ -->
+<section id="hero" class="dot-grid" style="position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:7rem 1rem 4rem;opacity:0">
+
+  <div style="position:relative;z-index:10;max-width:52rem;margin:0 auto;display:flex;flex-direction:column;align-items:center">
+
+    <!-- 1. KARE ACM-W PRESENTS -->
+    <div style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.4rem 1.2rem;border-radius:9999px;border:1px solid #ffedd5;background:#fff7ed;font-size:0.75rem;font-weight:800;color:#c2410c;margin-bottom:1rem;letter-spacing:.12em">
+      KARE ACM-W PRESENTS
+    </div>
+
+    <!-- 2. HERIZON & WOMEN WHO BUILD -->
+    <h1 style="font-size:clamp(3.5rem,9vw,6rem);font-weight:900;color:#0f172a;letter-spacing:-0.03em;line-height:1;margin-bottom:0.4rem">
+      HERIZON <span style="color:#f97316">2026</span>
+    </h1>
+
+    <p style="font-size:clamp(1.1rem,2.5vw,1.5rem);font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.25rem">
+      Women Who Build
+    </p>
+
+    <p style="font-size:clamp(0.95rem,2vw,1.15rem);color:#64748b;max-width:38rem;margin:0 auto 1.75rem;line-height:1.6;font-weight:500">
+      Innovate, Code &amp; Transform. Join India's premier hackathon and assessment platform driving real-world tech solutions.
+    </p>
+
+    <p style="font-size:0.8rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.15em;margin-bottom:2rem">August 28–29, 2026</p>
+
+    <!-- Countdown -->
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:2.25rem">
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;padding:0.875rem 1.25rem;min-width:80px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+        <div id="cd-days" style="font-size:2rem;font-weight:900;color:#ea580c;line-height:1">00</div>
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Days</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;padding:0.875rem 1.25rem;min-width:80px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+        <div id="cd-hours" style="font-size:2rem;font-weight:900;color:#ea580c;line-height:1">00</div>
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Hours</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;padding:0.875rem 1.25rem;min-width:80px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+        <div id="cd-mins" style="font-size:2rem;font-weight:900;color:#ea580c;line-height:1">00</div>
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Mins</div>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:0.75rem;padding:0.875rem 1.25rem;min-width:80px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+        <div id="cd-secs" style="font-size:2rem;font-weight:900;color:#ea580c;line-height:1">00</div>
+        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-top:6px">Secs</div>
+      </div>
+    </div>
+
+    <!-- CTA Button -->
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+      <a href="register.html" class="btn-orange">Register Now →</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- WHY JOIN -->
+<section style="background:#f1f5f9;padding:5rem 1rem;border-top:1px solid #e2e8f0">
+  <div style="max-width:60rem;margin:0 auto">
+    <div style="text-align:center;margin-bottom:3rem">
+      <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.2em;color:#ea580c">Event Highlights</span>
+      <h2 style="font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;color:#0f172a;margin-top:0.3rem;letter-spacing:-0.02em">Why Join HERIZON 2026?</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem">
+      <div class="clean-card">
+        <div style="width:40px;height:40px;border-radius:0.5rem;background:#fff7ed;border:1px solid #ffedd5;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem">🏆</div>
+        <h3 style="font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:0.5rem">Cash Prizes</h3>
+        <p style="font-size:0.875rem;color:#64748b;line-height:1.6">Win awards, trophies, certificates of excellence, and exclusive swag for top teams.</p>
+      </div>
+      <div class="clean-card">
+        <div style="width:40px;height:40px;border-radius:0.5rem;background:#fff7ed;border:1px solid #ffedd5;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem">💡</div>
+        <h3 style="font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:0.5rem">Real Challenges</h3>
+        <p style="font-size:0.875rem;color:#64748b;line-height:1.6">Choose from domains spanning AI, Web, Health, Agriculture &amp; Accessibility.</p>
+      </div>
+      <div class="clean-card">
+        <div style="width:40px;height:40px;border-radius:0.5rem;background:#fff7ed;border:1px solid #ffedd5;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:1rem">🤝</div>
+        <h3 style="font-size:1rem;font-weight:700;color:#0f172a;margin-bottom:0.5rem">Expert Mentorship</h3>
+        <p style="font-size:0.875rem;color:#64748b;line-height:1.6">Get 1-on-1 guidance from industry leaders and ACM-W mentors throughout the event.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="background:#ffffff;border-top:1px solid #e2e8f0;padding:2rem 1rem;text-align:center">
+  <div style="display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:0.5rem">
+    <img src="assets/kare-acmw-badge.png" alt="Badge" style="height:32px;width:auto;object-fit:contain"/>
+    <span style="font-weight:800;font-size:0.95rem;color:#0f172a">ACM-W HERIZON 2026</span>
+  </div>
+  <p style="font-size:0.75rem;color:#64748b;font-weight:500">© 2026 KARE ACM-W Student Chapter · Kalasalingam Academy of Research and Education</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+gsap.timeline()
+  .to('#intro-badge', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' })
+  .to('#intro-presents', { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, '-=0.2')
+  .to('.hz-letter', { opacity: 1, y: 0, stagger: 0.08, duration: 0.55, ease: 'power3.out' }, '-=0.1')
+  .to('#intro-sub', { opacity: 1, duration: 0.5 }, '-=0.2')
+  .to({}, { duration: 1.2 })
+  .to('#intro-stage', { opacity: 0, duration: 0.6, ease: 'power2.inOut', onComplete: () => { document.getElementById('intro-stage').style.display = 'none'; } })
+  .to('#hero', { opacity: 1, duration: 0.7, ease: 'power3.out' }, '-=0.2')
+  .to('#nav', { opacity: 1, y: 0, pointerEvents: 'auto', duration: 0.5, ease: 'power3.out', onComplete: () => document.body.classList.remove('locked') }, '-=0.4');
+
+const targetDate = new Date('2026-08-28T09:00:00+05:30').getTime();
+function tick() {
+  const diff = Math.max(0, targetDate - Date.now());
+  document.getElementById('cd-days').textContent  = String(Math.floor(diff / 864e5)).padStart(2,'0');
+  document.getElementById('cd-hours').textContent = String(Math.floor((diff % 864e5) / 36e5)).padStart(2,'0');
+  document.getElementById('cd-mins').textContent  = String(Math.floor((diff % 36e5) / 6e4)).padStart(2,'0');
+  document.getElementById('cd-secs').textContent  = String(Math.floor((diff % 6e4) / 1e3)).padStart(2,'0');
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
