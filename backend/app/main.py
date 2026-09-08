@@ -94,3 +94,7 @@ def root():
         "docs": "/docs",
         "redoc": "/redoc",
     }
+
+@app.get("/healthz")
+def health_check():
+    return {"status": "ok"}

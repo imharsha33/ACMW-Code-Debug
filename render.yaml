@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: acmw-code-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: API_V1_STR
+        value: /api
+      - key: CORS_ORIGINS
+        value: "*"
