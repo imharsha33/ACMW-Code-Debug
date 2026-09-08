@@ -41,6 +41,7 @@ interface AppContextType {
   addStudentUser: (email: string, pass: string) => Promise<void>;
   deleteStudentUser: (email: string) => Promise<void>;
   adminResetStudentViolations: (email: string) => Promise<void>;
+  syncLiveStudentProgress: (customRuntimes?: Record<string, QuestionRuntime>, activeQuestionTitle?: string) => Promise<void>;
 }
 
 const DEFAULT_QUESTIONS: Question[] = [
@@ -203,6 +204,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBlocked: false,
         examDeviceId: null,
         testSubmitted: false,
+        totalScore: 0,
+        maxPossibleScore: 15,
+        questionsAnswered: 0,
+        totalQuestionsCount: 2,
       },
     ];
   });
@@ -213,12 +218,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const docRef = doc(db, "students", student.email.toLowerCase().trim());
       await setDoc(docRef, {
         pass: student.pass,
-        tabSwitchCount: student.tabSwitchCount,
-        isBlocked: student.isBlocked,
+        tabSwitchCount: student.tabSwitchCount ?? 0,
+        isBlocked: student.isBlocked ?? false,
         examDeviceId: student.examDeviceId ?? null,
         testSubmitted: student.testSubmitted ?? false,
         totalScore: student.totalScore ?? 0,
         maxPossibleScore: student.maxPossibleScore ?? 0,
+        questionsAnswered: student.questionsAnswered ?? 0,
+        totalQuestionsCount: student.totalQuestionsCount ?? 0,
+        activeQuestionTitle: student.activeQuestionTitle ?? null,
+        lastActiveAt: student.lastActiveAt ?? Date.now(),
       }, { merge: true });
     } catch (err) {
       console.warn("Failed to sync student to Firestore:", err);
@@ -265,6 +274,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 testSubmitted: data.testSubmitted ?? false,
                 totalScore: data.totalScore ?? 0,
                 maxPossibleScore: data.maxPossibleScore ?? 0,
+                questionsAnswered: data.questionsAnswered ?? 0,
+                totalQuestionsCount: data.totalQuestionsCount ?? 0,
+                activeQuestionTitle: data.activeQuestionTitle ?? undefined,
+                lastActiveAt: data.lastActiveAt ?? undefined,
               });
             });
 
@@ -487,36 +500,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await deleteStudentFromFirestore(lower);
   };
 
-  const adminResetStudentViolations = async (email: string) => {
-    const lower = email.toLowerCase().trim();
-    setRegisteredStudents((prev) =>
-      prev.map((s) =>
-        s.email.toLowerCase().trim() === lower
-          ? { ...s, tabSwitchCount: 0, isBlocked: false, testSubmitted: false, examDeviceId: null }
-          : s
-      )
-    );
-    if (session && session.email.toLowerCase().trim() === lower) {
-      setAssessmentSession((prev) => ({
-        ...prev,
-        tabSwitchCount: 0,
-        terminatedByViolations: false,
-        finalized: false,
-      }));
-    }
-
-    const student = registeredStudents.find((s) => s.email.toLowerCase().trim() === lower);
-    if (student) {
-      await syncStudentToFirestore({
-        ...student,
-        tabSwitchCount: 0,
-        isBlocked: false,
-        testSubmitted: false,
-        examDeviceId: null,
-      });
-    }
-  };
-
   const login = async (email: string, pass: string) => {
     const lower = email.toLowerCase().trim();
     const isAdminCredentials = (lower === "acmw@kare.klu.in" && pass === "acmw@2026w");
@@ -538,12 +521,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const sess: UserSession = { email: lower, name: "Club Admin", role: "admin" };
       setSession(sess);
       localStorage.setItem("herizon_session", JSON.stringify(sess));
-      // Reset runtimes — admin doesn't have student runtimes
       setRuntimes({});
       return { ok: true, role: "admin" as const };
     }
 
-    // HIGH CONCURRENCY OPTIMIZATION: Trigger Firestore read and Firebase Auth concurrently
+    // Trigger Firestore read and Firebase Auth concurrently
     const docRef = doc(db, "students", lower);
     const [authResult, dbResult] = await Promise.allSettled([
       signInWithEmailAndPassword(auth, lower, pass),
@@ -562,6 +544,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         testSubmitted: d.testSubmitted ?? false,
         totalScore: d.totalScore ?? 0,
         maxPossibleScore: d.maxPossibleScore ?? 0,
+        questionsAnswered: d.questionsAnswered ?? 0,
+        totalQuestionsCount: d.totalQuestionsCount ?? 0,
+        activeQuestionTitle: d.activeQuestionTitle ?? undefined,
+        lastActiveAt: d.lastActiveAt ?? undefined,
       };
     }
 
@@ -573,18 +559,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isBlocked: false,
       examDeviceId: null,
       testSubmitted: false,
+      totalScore: 0,
+      maxPossibleScore: 15,
+      questionsAnswered: 0,
+      totalQuestionsCount: 2,
     } : null);
 
     if (!canonicalRecord) {
       return { ok: false, role: "student" as const, error: "Invalid login credentials. Only registered candidates can access the portal." };
     }
 
-    // Verify entered password matches stored candidate password
     if (pass !== canonicalRecord.pass) {
       return { ok: false, role: "student" as const, error: "Incorrect password. Please enter the password assigned by the coordinator." };
     }
 
-    // Enforce block status
     if (canonicalRecord.isBlocked) {
       return {
         ok: false,
@@ -593,12 +581,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // If Auth was not successful (e.g. user does not exist in Firebase Auth yet, or token expired)
     if (authResult.status === "rejected") {
       const err = authResult.reason;
       if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
         try {
-          // Candidate is registered in Firestore, seed their Firebase Auth record dynamically on first login
           await createUserWithEmailAndPassword(auth, lower, pass);
         } catch (createErr: any) {
           console.error("On-demand candidate registration failed:", createErr);
@@ -609,10 +595,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // Build the student record
     const updatedRecord: StudentUser = { ...canonicalRecord, pass };
 
-    // Update local state
     setRegisteredStudents((prev) => {
       const exists = prev.some((s) => s.email.toLowerCase().trim() === lower);
       if (exists) {
@@ -623,7 +607,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [...prev, updatedRecord];
     });
 
-    // HIGH CONCURRENCY OPTIMIZATION: Do not block student redirection on Firestore write latency
     syncStudentToFirestore(updatedRecord).catch((syncErr) => {
       console.warn("Background student login sync failed:", syncErr);
     });
@@ -635,7 +618,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSession(sess);
     localStorage.setItem("herizon_session", JSON.stringify(sess));
 
-    // Hydrate per-student runtimes from namespaced localStorage key
     const userRuntimeKey = `acmw_runtimes_${lower}`;
     try {
       const savedRuntimes = localStorage.getItem(userRuntimeKey);
@@ -644,7 +626,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRuntimes({});
     }
 
-    // Hydrate per-student assessment session from namespaced localStorage key
     const userSessionKey = `acmw_assessment_session_${lower}`;
     try {
       const savedSession = localStorage.getItem(userSessionKey);
@@ -670,13 +651,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     return { ok: true, role: "student" as const };
-
   };
 
   function logout() {
-    // Reset runtimes so the next student logged in on this browser starts fresh
     setRuntimes({});
-    // Reset assessment session state
     setAssessmentSession({
       startedAt: null,
       finalized: false,
@@ -689,7 +667,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }
 
   const addQuestion = async (q: Omit<Question, "id" | "createdAt" | "updatedAt" | "studentStatus">): Promise<string> => {
-    // Use crypto.randomUUID() to prevent ID collisions on rapid clicks or multi-admin edits
     const newId = "q_" + crypto.randomUUID();
     const newQ: Question = {
       ...q,
@@ -698,7 +675,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    // Use functional updater — avoids stale-closure bug from reading `questions` directly
     setQuestions((prev) => [newQ, ...prev]);
 
     if (db) {
@@ -735,7 +711,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAssessmentSettings = async (s: Partial<AssessmentSettings>): Promise<void> => {
-    // Compute the merged settings BEFORE calling setState so we can reliably write to Firestore
     let updatedSettings: AssessmentSettings = { ...assessmentSettings, ...s };
 
     setAssessmentSettings(updatedSettings);
@@ -752,11 +727,109 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (db) {
-      // setDoc with { merge: true } creates the doc if it doesn't exist (first admin save)
       await setDoc(doc(db, "assessmentSettings", "global"), updatedSettings, { merge: true });
-      // If setDoc throws, the error propagates to the caller (AssessmentSettingsPage)
-      // so the admin sees the error instead of a false "saved" success
     }
+  };
+
+  const adminResetStudentViolations = async (email: string) => {
+    const lower = email.toLowerCase().trim();
+    setRegisteredStudents((prev) =>
+      prev.map((s) =>
+        s.email.toLowerCase().trim() === lower
+          ? { ...s, tabSwitchCount: 0, isBlocked: false, testSubmitted: false, examDeviceId: null }
+          : s
+      )
+    );
+    if (session && session.email.toLowerCase().trim() === lower) {
+      setAssessmentSession((prev) => ({
+        ...prev,
+        tabSwitchCount: 0,
+        terminatedByViolations: false,
+        finalized: false,
+      }));
+      try {
+        const userSessionKey = `acmw_assessment_session_${lower}`;
+        const saved = localStorage.getItem(userSessionKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          localStorage.setItem(userSessionKey, JSON.stringify({
+            ...parsed,
+            tabSwitchCount: 0,
+            terminatedByViolations: false,
+            finalized: false,
+          }));
+        }
+      } catch {}
+    }
+
+    const student = registeredStudents.find((s) => s.email.toLowerCase().trim() === lower);
+    if (student) {
+      await syncStudentToFirestore({
+        ...student,
+        tabSwitchCount: 0,
+        isBlocked: false,
+        testSubmitted: false,
+        examDeviceId: null,
+      });
+    }
+  };
+
+  const syncLiveStudentProgress = async (
+    customRuntimes?: Record<string, QuestionRuntime>,
+    activeQuestionTitle?: string
+  ) => {
+    if (!session || session.role !== "student") return;
+    const lower = session.email.toLowerCase().trim();
+    const effectiveRuntimes = customRuntimes ?? runtimes;
+
+    let earnedMarks = 0;
+    let totalMarks = 0;
+    let answeredCount = 0;
+    const enabledQuestions = questions.filter((q) => q.enabled === "Enabled");
+    const totalCount = enabledQuestions.length;
+
+    enabledQuestions.forEach((q) => {
+      totalMarks += q.maxMarks;
+      const rt = effectiveRuntimes[q.id];
+      if (!rt) return;
+
+      if (q.questionType === "Output Prediction") {
+        if (rt.selectedOptionId) {
+          answeredCount++;
+          const correctOpt = q.options?.find((o) => o.isCorrect);
+          if (correctOpt && rt.selectedOptionId === correctOpt.id) {
+            earnedMarks += q.maxMarks;
+          }
+        }
+      } else {
+        if (rt.status === "Submitted" || rt.status === "Completed" || (rt.lastOutput && rt.lastOutput.length > 0)) {
+          answeredCount++;
+        }
+        if (rt.lastOutput && (rt.lastOutput.includes("SUCCESS (All") || rt.lastOutput.includes("HURRAY! YOU DID IT"))) {
+          earnedMarks += q.maxMarks;
+        }
+      }
+    });
+
+    const currentStudent = registeredStudents.find(
+      (s) => s.email.toLowerCase().trim() === lower
+    );
+
+    const updatedStudent: StudentUser = {
+      ...(currentStudent ?? { email: lower, pass: "", tabSwitchCount: 0, isBlocked: false, testSubmitted: false }),
+      totalScore: earnedMarks,
+      maxPossibleScore: totalMarks || 100,
+      questionsAnswered: answeredCount,
+      totalQuestionsCount: totalCount,
+      activeQuestionTitle: activeQuestionTitle ?? currentStudent?.activeQuestionTitle,
+      lastActiveAt: Date.now(),
+    };
+
+    setRegisteredStudents((prev) =>
+      prev.map((s) => (s.email.toLowerCase().trim() === lower ? updatedStudent : s))
+    );
+
+    await syncStudentToFirestore(updatedStudent);
   };
 
   const startAssessment = async (): Promise<{ ok: boolean; error?: string }> => {
@@ -765,7 +838,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const lower = session.email.toLowerCase().trim();
 
-    // Check Firestore for examDeviceId — if another device already has the exam slot, deny
     try {
       const docRef = doc(db, "students", lower);
       const snap = await getDoc(docRef);
@@ -781,14 +853,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.warn("Could not verify exam device from Firestore:", err);
-      // Allow start if Firestore is unreachable — fail-open
     }
 
-    // Claim the exam slot for this device
     const student = registeredStudents.find((s) => s.email.toLowerCase().trim() === lower);
     const updatedStudent: StudentUser = {
       ...(student ?? { email: lower, pass: "", tabSwitchCount: 0, isBlocked: false, testSubmitted: false }),
       examDeviceId: localDeviceId,
+      isBlocked: false,
+      tabSwitchCount: assessmentSession.tabSwitchCount ?? 0,
+      lastActiveAt: Date.now(),
     };
 
     setRegisteredStudents((prev) =>
@@ -796,9 +869,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     await syncStudentToFirestore(updatedStudent);
 
-    const newSession = { ...assessmentSession, startedAt: Date.now() };
+    // Preserve original startedAt on resume so countdown timer & progress never reset!
+    const existingStartedAt = assessmentSession.startedAt;
+    const newSession = {
+      ...assessmentSession,
+      startedAt: existingStartedAt || Date.now(),
+      terminatedByViolations: false,
+      finalized: false,
+    };
     setAssessmentSession(newSession);
-    // Persist per-user assessment session to namespaced key
     try {
       localStorage.setItem(`acmw_assessment_session_${lower}`, JSON.stringify(newSession));
     } catch {}
@@ -810,9 +889,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (session && session.role === "student") {
       const lower = session.email.toLowerCase().trim();
 
-      // Compute total candidate score from runtimes and questions
       let earnedMarks = 0;
       let totalMarks = 0;
+      let answeredCount = 0;
 
       questions.forEach((q) => {
         if (q.enabled === "Enabled") {
@@ -820,14 +899,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const rt = runtimes[q.id];
           if (q.questionType === "Output Prediction") {
             if (rt && rt.selectedOptionId) {
+              answeredCount++;
               const correctOpt = q.options?.find((o) => o.isCorrect);
               if (correctOpt && rt.selectedOptionId === correctOpt.id) {
                 earnedMarks += q.maxMarks;
               }
             }
           } else {
-            // Check test case results in lastOutput
-            if (rt && rt.lastOutput && rt.lastOutput.includes("SUCCESS (All")) {
+            if (rt && (rt.status === "Submitted" || rt.status === "Completed" || (rt.lastOutput && rt.lastOutput.length > 0))) {
+              answeredCount++;
+            }
+            if (rt && rt.lastOutput && (rt.lastOutput.includes("SUCCESS (All") || rt.lastOutput.includes("HURRAY! YOU DID IT"))) {
               earnedMarks += q.maxMarks;
             }
           }
@@ -837,7 +919,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setRegisteredStudents((prev) =>
         prev.map((s) =>
           s.email.toLowerCase().trim() === lower
-            ? { ...s, testSubmitted: true, examDeviceId: null, totalScore: earnedMarks, maxPossibleScore: totalMarks }
+            ? {
+                ...s,
+                testSubmitted: true,
+                examDeviceId: null,
+                totalScore: earnedMarks,
+                maxPossibleScore: totalMarks,
+                questionsAnswered: answeredCount,
+                totalQuestionsCount: questions.filter(q => q.enabled === "Enabled").length,
+              }
             : s
         )
       );
@@ -849,9 +939,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await syncStudentToFirestore({
           ...student,
           testSubmitted: true,
-          examDeviceId: null,   // release the exam slot so admin can reset
+          examDeviceId: null,
           totalScore: earnedMarks,
           maxPossibleScore: totalMarks,
+          questionsAnswered: answeredCount,
+          totalQuestionsCount: questions.filter(q => q.enabled === "Enabled").length,
         });
       }
     }
@@ -860,13 +952,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const recordTabSwitch = () => {
     const maxLimit = assessmentSettings.tabSwitchLimit ?? assessmentSession.maxTabSwitches ?? 3;
 
-    // Compute SYNCHRONOUSLY from current state — do NOT compute inside the updater callback.
-    // If computed inside setState updater, the values are 0/false when syncStudentToFirestore
-    // is called immediately after, so the wrong data would be written to Firestore.
     const nextCount = (assessmentSession.tabSwitchCount ?? 0) + 1;
     const terminated = nextCount >= maxLimit;
 
-    // Update assessment session state and persist to per-user key
     setAssessmentSession((prev) => {
       const updated = { ...prev, tabSwitchCount: nextCount, maxTabSwitches: maxLimit, terminatedByViolations: terminated };
       if (session?.email) {
@@ -878,7 +966,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (session && session.role === "student") {
       const lower = session.email.toLowerCase().trim();
 
-      // Update local registered students state
       setRegisteredStudents((prev) =>
         prev.map((s) =>
           s.email.toLowerCase().trim() === lower
@@ -887,8 +974,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         )
       );
 
-      // Build the record to push to Firestore using known values
-      // (registeredStudents state is stale here — setState above hasn't applied yet)
       const currentStudent = registeredStudents.find(
         (s) => s.email.toLowerCase().trim() === lower
       );
@@ -896,20 +981,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const recordToSync: StudentUser = {
         email: lower,
         pass: currentStudent?.pass ?? "",
-        tabSwitchCount: nextCount,          // ← correct, freshly computed
-        isBlocked: terminated,              // ← correct, freshly computed
+        tabSwitchCount: nextCount,
+        isBlocked: terminated,
         examDeviceId: currentStudent?.examDeviceId ?? localDeviceId,
         testSubmitted: currentStudent?.testSubmitted ?? false,
+        totalScore: currentStudent?.totalScore ?? 0,
+        maxPossibleScore: currentStudent?.maxPossibleScore ?? 0,
+        questionsAnswered: currentStudent?.questionsAnswered ?? 0,
+        totalQuestionsCount: currentStudent?.totalQuestionsCount ?? 0,
+        activeQuestionTitle: currentStudent?.activeQuestionTitle,
+        lastActiveAt: Date.now(),
       };
 
-      // Fire-and-forget — admin's onSnapshot listener will pick this up immediately
       syncStudentToFirestore(recordToSync)
         .catch((err) => console.warn("Tab switch Firestore sync failed:", err));
     }
 
     return { terminated, count: nextCount };
   };
-
 
   const adminResetViolations = () => {
     setAssessmentSession((prev) => ({
@@ -950,20 +1039,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRuntimes((prev) => {
       const existing = prev[questionId] ?? getRuntime(questionId);
       const updated = { ...existing, ...partial };
-      return { ...prev, [questionId]: updated };
+      const nextRuntimes = { ...prev, [questionId]: updated };
+      
+      if (session?.role === "student") {
+        const q = questions.find((item) => item.id === questionId);
+        syncLiveStudentProgress(nextRuntimes, q?.title).catch(() => {});
+      }
+      return nextRuntimes;
     });
-    // NOTE: We deliberately do NOT call setQuestions here to update studentStatus.
-    // studentStatus in the questions list comes from Firestore and is shared across all students.
-    // The actual per-student status is tracked exclusively in `runtimes` (localStorage).
-    // Updating questions here would be immediately overwritten by the Firestore onSnapshot
-    // listener, causing an infinite-loop-like overwrite cycle.
   };
 
   const ensureRuntimeStarted = (questionId: string) => {
     setRuntimes((prev) => {
       const existing = prev[questionId] ?? getRuntime(questionId);
       if (!existing.questionStartedAt) {
-        return {
+        const nextRuntimes = {
           ...prev,
           [questionId]: {
             ...existing,
@@ -971,6 +1061,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: existing.status === "Not Started" ? "In Progress" : existing.status,
           },
         };
+        if (session?.role === "student") {
+          const q = questions.find((item) => item.id === questionId);
+          syncLiveStudentProgress(nextRuntimes, q?.title).catch(() => {});
+        }
+        return nextRuntimes;
       }
       return prev;
     });
@@ -1002,6 +1097,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addStudentUser,
         deleteStudentUser,
         adminResetStudentViolations,
+        syncLiveStudentProgress,
       }}
     >
       {children}
@@ -1014,3 +1110,4 @@ export const useApp = () => {
   if (!context) throw new Error("useApp must be used within an AppProvider");
   return context;
 };
+

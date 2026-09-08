@@ -16,12 +16,12 @@ export function getBackendUrl(): string {
 
   if (typeof window !== "undefined" && window.location.hostname) {
     const host = window.location.hostname;
-    if (host !== "localhost" && host !== "127.0.0.1" && !host.endsWith("web.app") && !host.endsWith("firebaseapp.com")) {
-      return `http://${host}:8000/api`;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:8000/api";
     }
   }
 
-  return "http://localhost:8000/api";
+  return "https://acmw-code-debug.onrender.com/api";
 }
 
 export function setCustomBackendUrl(url: string) {

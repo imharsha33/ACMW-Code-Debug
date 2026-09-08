@@ -129,4 +129,8 @@ export interface StudentUser {
   testSubmitted?: boolean;
   totalScore?: number;
   maxPossibleScore?: number;
+  questionsAnswered?: number;
+  totalQuestionsCount?: number;
+  activeQuestionTitle?: string;
+  lastActiveAt?: number;
 }

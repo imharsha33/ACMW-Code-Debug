@@ -148,7 +148,7 @@ export const AssessmentIntro: React.FC = () => {
                 </>
               ) : (
                 <>
-                  Start Assessment Now <ArrowRight size={18} />
+                  {assessmentSession.startedAt ? "Resume Assessment Now" : "Start Assessment Now"} <ArrowRight size={18} />
                 </>
               )}
             </button>

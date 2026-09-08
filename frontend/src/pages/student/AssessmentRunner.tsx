@@ -20,11 +20,28 @@ export const AssessmentRunner: React.FC = () => {
     getRuntime,
     updateRuntime,
     ensureRuntimeStarted,
+    session,
   } = useApp();
 
   const enabledQuestions = questions.filter((q) => q.enabled === "Enabled");
 
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [activeIdx, setActiveIdx] = useState(() => {
+    if (typeof window !== "undefined" && session?.email) {
+      const saved = localStorage.getItem(`acmw_active_idx_${session.email.toLowerCase().trim()}`);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0) return parsed;
+      }
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    if (session?.email) {
+      localStorage.setItem(`acmw_active_idx_${session.email.toLowerCase().trim()}`, String(activeIdx));
+    }
+  }, [activeIdx, session?.email]);
+
   const activeQuestionFromList = enabledQuestions[activeIdx] ?? null;
   // Always derive current question details from latest questions state in context
   const currentQuestion = activeQuestionFromList
@@ -325,33 +342,43 @@ ${logs.join("\n")}
   };
 
 
-  if (assessmentSession.terminatedByViolations || assessmentSession.tabSwitchCount >= assessmentSession.maxTabSwitches) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 text-white font-sans">
-        <div className="max-w-md w-full bg-slate-800 border border-red-500/50 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-500 border border-red-500/40 mx-auto">
-            <ShieldAlert size={40} className="animate-bounce" />
-          </div>
-          <h2 className="text-2xl font-black text-white">Assessment Terminated</h2>
-          <p className="text-xs text-slate-300 font-medium leading-relaxed">
-            Your assessment was locked due to exceeding the maximum allowed proctoring violations ({assessmentSession.tabSwitchCount} / {assessmentSession.maxTabSwitches}).
-          </p>
-          <div className="p-3 bg-red-950/60 rounded-xl border border-red-800/80 text-[11px] text-red-300 font-mono">
-            Status: SESSION_LOCKED_BY_PROCTOR
-          </div>
-          <button onClick={() => navigate("/student/dashboard")} className="btn-danger w-full py-3 font-bold">
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  const isLockedByViolations =
+    assessmentSession.terminatedByViolations ||
+    assessmentSession.tabSwitchCount >= assessmentSession.maxTabSwitches;
 
   return (
     <div className="flex flex-col h-screen bg-slate-100 text-slate-900 font-sans overflow-hidden relative">
+      {/* Real-time Locked by Proctor Full-screen Modal (Dismisses automatically when admin unblocks) */}
+      {isLockedByViolations && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-slate-900 border border-red-500/60 rounded-2xl p-8 text-center space-y-4 shadow-2xl animate-fade-in">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-500 border border-red-500/40 mx-auto">
+              <ShieldAlert size={40} className="animate-bounce" />
+            </div>
+            <h2 className="text-2xl font-black text-white">Assessment Locked by Proctor</h2>
+            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+              Your assessment was locked due to exceeding allowed tab switch violations ({assessmentSession.tabSwitchCount} / {assessmentSession.maxTabSwitches}).
+            </p>
+            <div className="p-3 bg-red-950/60 rounded-xl border border-red-800/80 text-[11px] text-red-300 font-mono">
+              Status: SESSION_LOCKED_BY_PROCTOR
+            </div>
+            <p className="text-[11px] text-amber-400 font-semibold">
+              ⏳ Waiting for admin to unblock... Once unblocked, your exam will resume automatically where you left off.
+            </p>
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={() => navigate("/student/dashboard")}
+                className="btn-secondary w-full py-2.5 text-xs font-bold"
+              >
+                Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Violation Warning Modal Backdrop (When Candidate Exits Fullscreen or Switches Tabs) */}
-      {(showWarningModal || (!isFullscreen && assessmentSettings.fullscreenMode === "Required")) && !assessmentSession.terminatedByViolations && (
+      {(showWarningModal || (!isFullscreen && assessmentSettings.fullscreenMode === "Required")) && !isLockedByViolations && (
         <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-amber-500/60 rounded-2xl p-8 max-w-lg w-full text-center space-y-5 shadow-2xl">
             {hasEnteredFS ? (

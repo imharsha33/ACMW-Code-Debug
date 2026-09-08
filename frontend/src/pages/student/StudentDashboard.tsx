@@ -7,9 +7,10 @@ import { AcmwBrand } from "../../components/AcmwBrand";
 
 export const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { questions, session, assessmentSettings } = useApp();
+  const { questions, session, assessmentSettings, assessmentSession } = useApp();
 
   const enabledCount = questions.filter((q) => q.enabled === "Enabled").length;
+  const isStarted = assessmentSession?.startedAt && !assessmentSession?.finalized;
 
   return (
     <div className="space-y-8 w-full">
@@ -21,7 +22,7 @@ export const StudentDashboard: React.FC = () => {
 
 
         <button onClick={() => navigate("/student/assessment")} className="btn-primary py-3 px-6 shadow-md">
-          <PlayCircle size={17} /> Enter Assessment
+          <PlayCircle size={17} /> {isStarted ? "Resume Assessment" : "Enter Assessment"}
         </button>
       </div>
 
@@ -47,7 +48,7 @@ export const StudentDashboard: React.FC = () => {
 
         <div className="pt-3 flex flex-wrap items-center justify-center gap-4">
           <button onClick={() => navigate("/student/assessment")} className="btn-primary text-sm px-8 py-3.5 shadow-md">
-            Start Live Assessment <ArrowRight size={16} />
+            {isStarted ? "Resume Live Assessment" : "Start Live Assessment"} <ArrowRight size={16} />
           </button>
         </div>
 
