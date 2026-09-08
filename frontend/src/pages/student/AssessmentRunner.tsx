@@ -5,7 +5,23 @@ import type { Language } from "../../types";
 import { KareAcmwBadge } from "../../components/KareAcmwBadge";
 import { apiRunCode } from "../../services/api";
 
-import { Clock, Play, Send, ShieldAlert, CheckCircle, Maximize2, RotateCcw } from "lucide-react";
+import {
+  Clock,
+  Play,
+  Send,
+  ShieldAlert,
+  CheckCircle,
+  Maximize2,
+  RotateCcw,
+  Terminal,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+  Sliders,
+  PanelTop,
+  Minimize2,
+  Sparkles,
+} from "lucide-react";
 import { CodeEditorField } from "../../components/CodeEditorField";
 
 export const AssessmentRunner: React.FC = () => {
@@ -56,6 +72,11 @@ export const AssessmentRunner: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(() => !!document.fullscreenElement);
   const [hasEnteredFS, setHasEnteredFS] = useState(() => !!document.fullscreenElement);
   const [showWarningModal, setShowWarningModal] = useState(false);
+
+  // Dynamic Workspace Layout and Font Zoom Controls
+  const [workspaceLayout, setWorkspaceLayout] = useState<"balanced" | "editorMax" | "terminalMax">("balanced");
+  const [editorFontSize, setEditorFontSize] = useState<number>(14);
+
 
   // Resume fullscreen on explicit user button click
   const handleResumeFullscreen = async () => {
@@ -657,18 +678,19 @@ ${logs.join("\n")}
 
 
         {/* Right Code Workspace Panel */}
-        <div className="w-1/2 bg-slate-900 text-slate-100 flex flex-col min-h-0">
-          {/* Header Controls */}
-          <div className="h-12 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
+        <div className="w-1/2 bg-slate-900 text-slate-100 flex flex-col min-h-0 border-l border-slate-800">
+          {/* Workspace Top Toolbar */}
+          <div className="h-12 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 gap-3">
+            {/* Language Selector */}
+            <div className="flex items-center gap-1.5 overflow-x-auto">
               {currentQuestion.allowedLanguages.map((lang) => (
                 <button
                   key={lang}
                   onClick={() => handleLangSwitch(lang)}
-                  className={`px-3 py-1 rounded text-xs font-bold font-mono transition-colors ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold font-mono transition-all ${
                     selectedLang === lang
-                      ? "bg-orange-500 text-white"
-                      : "bg-slate-800 text-slate-400 hover:text-white"
+                      ? "bg-orange-500 text-white shadow-sm ring-2 ring-orange-500/30"
+                      : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700/80"
                   }`}
                 >
                   {lang}
@@ -676,45 +698,235 @@ ${logs.join("\n")}
               ))}
             </div>
 
+            {/* Layout View Modes & Font Zoom */}
             <div className="flex items-center gap-2">
-              {currentQuestion.questionType !== "Output Prediction" && (
-                <>
-                  <button onClick={handleResetCode} className="btn-secondary text-xs py-1 px-3 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 font-medium">
-                    <RotateCcw size={13} /> Reset Code
-                  </button>
-                  <button onClick={handleRunCode} className="btn-secondary text-xs py-1 px-3">
-                    <Play size={13} /> Run Code
-                  </button>
-                </>
-              )}
-              <button onClick={handleSubmitQuestion} className="btn-primary text-xs py-1 px-3">
-                <Send size={13} /> Submit
-              </button>
+              {/* Font Size Zoom Controls */}
+              <div className="hidden sm:flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-slate-400">
+                <button
+                  onClick={() => setEditorFontSize((prev) => Math.max(12, prev - 1))}
+                  title="Decrease Editor Font Size"
+                  className="px-1.5 py-0.5 hover:text-white hover:bg-slate-800 rounded text-[10px] font-bold"
+                >
+                  A-
+                </button>
+                <span className="px-1.5 text-[10px] font-mono text-slate-400 font-bold">{editorFontSize}px</span>
+                <button
+                  onClick={() => setEditorFontSize((prev) => Math.min(22, prev + 1))}
+                  title="Increase Editor Font Size"
+                  className="px-1.5 py-0.5 hover:text-white hover:bg-slate-800 rounded text-[10px] font-bold"
+                >
+                  A+
+                </button>
+              </div>
+
+              {/* Layout Presets (Balanced / Expand Editor / Expand Terminal) */}
+              <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-[11px] font-medium text-slate-400">
+                <button
+                  onClick={() => setWorkspaceLayout("editorMax")}
+                  title="Max Editor (80% Editor / 20% Terminal)"
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    workspaceLayout === "editorMax" ? "bg-blue-600 text-white font-bold" : "hover:text-white"
+                  }`}
+                >
+                  Editor View
+                </button>
+                <button
+                  onClick={() => setWorkspaceLayout("balanced")}
+                  title="Balanced Split (55% Editor / 45% Terminal)"
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    workspaceLayout === "balanced" ? "bg-blue-600 text-white font-bold" : "hover:text-white"
+                  }`}
+                >
+                  Split
+                </button>
+                <button
+                  onClick={() => setWorkspaceLayout("terminalMax")}
+                  title="Max Terminal (30% Editor / 70% Terminal)"
+                  className={`px-2 py-0.5 rounded transition-colors ${
+                    workspaceLayout === "terminalMax" ? "bg-blue-600 text-white font-bold" : "hover:text-white"
+                  }`}
+                >
+                  Terminal View
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1.5">
+                {currentQuestion.questionType !== "Output Prediction" && (
+                  <>
+                    <button
+                      onClick={handleResetCode}
+                      title="Reset code template"
+                      className="btn-secondary text-xs py-1 px-2.5 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 font-medium"
+                    >
+                      <RotateCcw size={12} />
+                    </button>
+                    <button
+                      onClick={handleRunCode}
+                      className="btn-secondary text-xs py-1 px-3.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 border-emerald-900/60 font-bold flex items-center gap-1 shadow-sm"
+                    >
+                      <Play size={13} className="fill-emerald-400 text-emerald-400" /> Run Code
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={handleSubmitQuestion}
+                  className="btn-primary text-xs py-1 px-4 font-bold shadow-md bg-blue-600 hover:bg-blue-700"
+                >
+                  <Send size={13} /> Submit
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Editor Body */}
-          {currentQuestion.questionType !== "Output Prediction" && (
-            <div className="flex-1 p-4 overflow-y-auto">
-              <CodeEditorField
-                value={code}
-                onChange={handleCodeChange}
-                language={selectedLang}
-                errorLine={errorLine}
-                placeholder={`// Write ${selectedLang} solution here...`}
-              />
+          {/* Main Work Area Split: Editor vs Terminal */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Editor Container */}
+            {currentQuestion.questionType !== "Output Prediction" ? (
+              <div
+                className={`p-3 transition-all duration-200 min-h-0 ${
+                  workspaceLayout === "editorMax"
+                    ? "flex-[8]"
+                    : workspaceLayout === "terminalMax"
+                    ? "flex-[3]"
+                    : "flex-[5]"
+                }`}
+              >
+                <CodeEditorField
+                  value={code}
+                  onChange={handleCodeChange}
+                  language={selectedLang}
+                  errorLine={errorLine}
+                  fontSize={editorFontSize}
+                  placeholder={`// Write ${selectedLang} solution here...`}
+                />
+              </div>
+            ) : (
+              <div className="flex-1 p-6 flex items-center justify-center text-center text-slate-400 font-sans">
+                <div className="max-w-md space-y-2">
+                  <Sparkles size={32} className="mx-auto text-blue-400 animate-pulse" />
+                  <h3 className="text-base font-bold text-white">Output Prediction Question</h3>
+                  <p className="text-xs text-slate-400">
+                    Review the reference code on the left statement panel and select your predicted choice option, then click Submit.
+                  </p>
+                </div>
+              </div>
+            )}
 
+            {/* Terminal Panel */}
+            <div
+              className={`bg-slate-950 border-t border-slate-800 flex flex-col transition-all duration-200 min-h-0 ${
+                workspaceLayout === "editorMax"
+                  ? "flex-[2]"
+                  : workspaceLayout === "terminalMax"
+                  ? "flex-[7]"
+                  : "flex-[5]"
+              }`}
+            >
+              {/* Terminal Header Bar */}
+              <div className="h-9 bg-slate-900 border-b border-slate-800/80 px-4 flex items-center justify-between shrink-0 select-none">
+                <div className="flex items-center gap-2">
+                  <Terminal size={14} className="text-blue-400" />
+                  <span className="text-[11px] font-mono font-bold tracking-wider uppercase text-slate-300">
+                    Execution Output &amp; Test Results
+                  </span>
+                  {consoleOutput && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        consoleOutput.includes("ALL TEST CASES PASSED") || consoleOutput.includes("SUCCESSFUL")
+                          ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                          : consoleOutput.includes("ERROR") || consoleOutput.includes("FAILED")
+                          ? "bg-red-950 text-red-400 border border-red-800"
+                          : "bg-blue-950 text-blue-400 border border-blue-800"
+                      }`}
+                    >
+                      {consoleOutput.includes("ALL TEST CASES PASSED") || consoleOutput.includes("SUCCESSFUL")
+                        ? "PASSED"
+                        : consoleOutput.includes("ERROR") || consoleOutput.includes("FAILED")
+                        ? "ERROR / FAILED"
+                        : "COMPLETED"}
+                    </span>
+                  )}
+                </div>
 
+                <div className="flex items-center gap-2">
+                  {consoleOutput && (
+                    <button
+                      onClick={() => setConsoleOutput(null)}
+                      title="Clear Terminal Output"
+                      className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 hover:bg-slate-800 px-2 py-0.5 rounded transition-colors"
+                    >
+                      <Trash2 size={12} /> Clear
+                    </button>
+                  )}
+                  <button
+                    onClick={() =>
+                      setWorkspaceLayout((prev) => (prev === "terminalMax" ? "balanced" : "terminalMax"))
+                    }
+                    title={workspaceLayout === "terminalMax" ? "Restore Balanced View" : "Expand Full Terminal"}
+                    className="text-[11px] text-slate-400 hover:text-white hover:bg-slate-800 p-1 rounded transition-colors"
+                  >
+                    {workspaceLayout === "terminalMax" ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Terminal Content Body */}
+              <div className="flex-1 p-4 font-mono text-xs text-slate-200 overflow-y-auto space-y-2 select-text leading-relaxed">
+                {consoleOutput ? (
+                  <div className="space-y-2">
+                    {consoleOutput.split("\n").map((line, idx) => {
+                      if (line.includes("ALL TEST CASES PASSED") || line.includes("SUCCESSFUL")) {
+                        return (
+                          <div key={idx} className="p-2.5 rounded-lg bg-emerald-950/70 border border-emerald-800/80 text-emerald-300 font-bold flex items-center gap-2">
+                            <CheckCircle size={15} className="text-emerald-400 shrink-0" />
+                            <span>{line}</span>
+                          </div>
+                        );
+                      }
+                      if (line.includes("ERROR") || line.includes("FAILED") || line.includes("EXCEPTION") || line.includes("Traceback")) {
+                        return (
+                          <div key={idx} className="p-2 rounded-lg bg-red-950/60 border border-red-800/70 text-red-300 font-semibold">
+                            {line}
+                          </div>
+                        );
+                      }
+                      if (line.includes("💡 Standard Output:") || line.includes("Output (stdout):")) {
+                        return (
+                          <p key={idx} className="text-blue-400 font-bold pt-1 border-t border-slate-800/60">
+                            {line}
+                          </p>
+                        );
+                      }
+                      if (line.includes("⏱️ Execution Time:") || line.includes("Language :")) {
+                        return (
+                          <p key={idx} className="text-amber-400 font-semibold">
+                            {line}
+                          </p>
+                        );
+                      }
+                      return (
+                        <p key={idx} className="text-slate-300">
+                          {line}
+                        </p>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-500 py-6 space-y-1 select-none">
+                    <Terminal size={24} className="opacity-40 mb-1" />
+                    <p className="text-xs font-semibold">Terminal ready.</p>
+                    <p className="text-[11px] text-slate-600">
+                      Click <span className="text-emerald-400 font-bold">"Run Code"</span> to execute against public test cases or <span className="text-blue-400 font-bold">"Submit"</span> to evaluate.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-
-          {/* Terminal Output */}
-          <div className="h-44 bg-slate-950 border-t border-slate-800 p-4 font-mono text-xs text-slate-300 overflow-y-auto shrink-0">
-            <p className="text-[10px] font-bold uppercase text-slate-500 mb-1">Terminal Output</p>
-            <pre className="whitespace-pre-wrap">{consoleOutput ?? "Ready to execute code."}</pre>
           </div>
         </div>
       </div>
     </div>
   );
 };
+

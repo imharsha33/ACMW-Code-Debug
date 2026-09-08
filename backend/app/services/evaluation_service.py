@@ -110,6 +110,32 @@ class EvaluationService:
         return "".join(code.split())
 
     def _compare_output(self, actual: str, expected: str) -> bool:
-        actual_clean = "\n".join([line.strip() for line in actual.strip().splitlines() if line.strip()])
-        expected_clean = "\n".join([line.strip() for line in expected.strip().splitlines() if line.strip()])
-        return actual_clean == expected_clean
+        if actual is None:
+            actual = ""
+        if expected is None:
+            expected = ""
+
+        # Normalize line endings and strip trailing/leading whitespace per line
+        actual_lines = [line.strip() for line in actual.replace("\r\n", "\n").replace("\r", "\n").strip().splitlines() if line.strip()]
+        expected_lines = [line.strip() for line in expected.replace("\r\n", "\n").replace("\r", "\n").strip().splitlines() if line.strip()]
+
+        actual_clean = "\n".join(actual_lines)
+        expected_clean = "\n".join(expected_lines)
+
+        # 1. Exact match
+        if actual_clean == expected_clean:
+            return True
+
+        # 2. Case-insensitive match (for True/true, False/false, etc.)
+        if actual_clean.lower() == expected_clean.lower():
+            return True
+
+        # 3. Numeric float match (e.g. 5 vs 5.0 or vice versa for single output)
+        try:
+            if float(actual_clean) == float(expected_clean):
+                return True
+        except (ValueError, TypeError):
+            pass
+
+        return False
+

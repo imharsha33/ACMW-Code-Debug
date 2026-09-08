@@ -96,14 +96,15 @@ export const QuestionForm: React.FC = () => {
       setErrorMsg("Question title is required.");
       return;
     }
-    if (questionType !== "Output Prediction" && testCases.length === 0) {
-      setErrorMsg("At least one test case is required for this question type.");
+    if (questionType === "Programming Problem" && testCases.length === 0) {
+      setErrorMsg("At least one test case is required for Programming Problems.");
       return;
     }
     if (questionType === "Output Prediction" && !options.some((o) => o.isCorrect)) {
       setErrorMsg("Please mark at least one option as correct.");
       return;
     }
+
 
     setSaving(true);
     setErrorMsg(null);
